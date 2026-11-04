@@ -1,10 +1,11 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals)]
 // The bulk of this crate is bindgen-generated code included below.
 // Its style is not actionable (e.g. bindgen 0.69 emits `transmute` for
-// bitfields, which current clippy flags as unnecessary), so clippy lints
-// are silenced crate-wide here; hand-written code lives in `stormlib`,
-// where clippy -D warnings still applies.
+// bitfields, which current clippy/rustc flag as unnecessary), so those
+// lints are silenced crate-wide here; hand-written code lives in
+// `stormlib`, where clippy -D warnings still applies.
 #![allow(clippy::all)]
+#![allow(unnecessary_transmutes)]
 
 #[cfg(target_os = "windows")]
 include!("./bindings_windows.rs");
