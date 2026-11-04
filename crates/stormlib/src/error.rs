@@ -1,5 +1,5 @@
-use thiserror::Error;
 use std::ffi::NulError;
+use thiserror::Error;
 
 #[derive(Debug)]
 pub struct ErrorCode(pub u32);

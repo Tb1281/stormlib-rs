@@ -54,13 +54,12 @@ fn test_w3x() {
 
     println!("file size = {}", size);
 
-    let mut buf = Vec::<u8>::with_capacity(size as usize);
-    buf.resize(buf.capacity(), 0);
+    let mut buf = vec![0u8; size as usize];
 
     let mut read: DWORD = 0;
     let ok = SFileReadFile(
       file_handle,
-      std::mem::transmute(buf.as_mut_ptr()),
+      buf.as_mut_ptr() as *mut std::ffi::c_void,
       size,
       &mut read as *mut DWORD,
       ptr::null_mut(),

@@ -2,7 +2,9 @@
 name = "stormlib-bindgen"
 version = "0.1.1"
 authors = ["Flux Xu <fluxxu@gmail.com>"]
-edition = "2018"
+description = "Regenerates the checked-in FFI bindings in crates/stormlib-sys/src from StormLib headers (run manually, per OS)"
+repository = "https://github.com/Tb1281/stormlib-rs"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

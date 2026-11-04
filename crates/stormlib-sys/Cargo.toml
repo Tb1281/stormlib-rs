@@ -2,12 +2,15 @@
 name = "stormlib-sys"
 version = "0.1.2"
 authors = ["Flux Xu <fluxxu@gmail.com>"]
+description = "Low-level FFI bindings to StormLib (Blizzard MPQ archives); builds the bundled C++ library from the git submodule"
+repository = "https://github.com/Tb1281/stormlib-rs"
 build = "build.rs"
-edition = "2018"
+edition = "2021"
+links = "storm"
 
 [dependencies]
-libc = "0.2.155"
-bitflags = "1.2"
+libc = "0.2"
+bitflags = "1"
 
 [build-dependencies]
-cmake = "0.1.49"
+cmake = "0.1"
