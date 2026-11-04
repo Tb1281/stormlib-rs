@@ -44,7 +44,7 @@ git submodule update --init --recursive
 
 To use a different StormLib checkout instead of the submodule, set
 `STORMLIB_DIR` to its path. The pinned submodule commit is
-`44362ca` (StormLib 9.25).
+`6bb1882` (StormLib v9.40, tag `v9.40`).
 
 ```sh
 cargo test --all
@@ -52,18 +52,27 @@ cargo test --all
 
 ## Layout
 
-- `crates/stormlib` — safe wrapper (`Archive` / `File`, read-only for now)
+- `crates/stormlib` — safe wrapper (`Archive` / `File`, read-only for now,
+  plus `Archive::find_files` for listing)
 - `crates/stormlib-sys` — raw FFI bindings + `build.rs` (builds StormLib via CMake)
 - `crates/stormlib-bindgen` — regenerates the checked-in bindings in
   `crates/stormlib-sys/src/bindings_{linux,macos,windows}.rs` from
   `StormLib.h`; run it manually on each OS after a StormLib update, the
-  bindings are not generated at build time
+  bindings are not generated at build time. The Linux bindings are
+  regenerated with bindgen; the macOS/Windows ones were updated by hand
+  from that regen (same StormLib-side changes, platform values kept),
+  and their syntax was checked locally with
+  `rustc --target x86_64-apple-darwin / x86_64-pc-windows-msvc` —
+  re-run bindgen natively on those OSes to confirm after the next
+  StormLib update.
 - `deps/StormLib` — StormLib submodule (upstream: ladislav-zezula/StormLib)
 
 ## Known limits
 
-- Read-only API only: open / has_file / open_file / get_size / read_all.
-  No archive creation, file adding, listing, or patching yet.
+- Read-only API only: open / has_file / open_file / get_size / read_all /
+  find_files. No archive creation, file adding, or patching yet.
+  `find_files` needs the archive's listfile, so open without
+  `MPQ_OPEN_NO_LISTFILE` to get names back.
 - `read_all` loads the whole file into memory; paths must be UTF-8 on
   non-Windows platforms.
 - The Windows bindings file is much larger than the Linux/macOS ones

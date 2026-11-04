@@ -37,6 +37,8 @@ pub enum StormError {
   CanNotComplete,
   #[error("FileCorrupt")]
   FileCorrupt,
+  #[error("FileDeleted")]
+  FileDeleted,
   #[error("UnknownCode({0:?})")]
   UnknownCode(ErrorCode),
   #[cfg(not(target_os = "windows"))]
@@ -68,6 +70,7 @@ impl From<ErrorCode> for StormError {
       stormlib_sys::ERROR_HANDLE_EOF => HandleEof,
       stormlib_sys::ERROR_CAN_NOT_COMPLETE => CanNotComplete,
       stormlib_sys::ERROR_FILE_CORRUPT => FileCorrupt,
+      stormlib_sys::ERROR_FILE_DELETED => FileDeleted,
       other => UnknownCode(ErrorCode(other)),
     }
   }
