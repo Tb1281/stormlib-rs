@@ -1,5 +1,4 @@
 use bitflags::bitflags;
-use stormlib_sys;
 
 bitflags! {
   pub struct OpenArchiveFlags: u32 {

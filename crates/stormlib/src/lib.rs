@@ -23,24 +23,25 @@ impl Archive {
   pub fn open<P: AsRef<Path>>(path: P, flags: OpenArchiveFlags) -> Result<Self> {
     #[cfg(not(target_os = "windows"))]
     let cpath = {
-      let pathstr = path.as_ref().to_str().ok_or_else(|| StormError::NonUtf8)?;
+      let pathstr = path.as_ref().to_str().ok_or(StormError::NonUtf8)?;
       CString::new(pathstr)?
     };
     #[cfg(target_os = "windows")]
     let cpath = {
       use widestring::U16CString;
-      U16CString::from_os_str(path.as_ref()).map_err(|_| StormError::InteriorNul)?.into_vec()
+      U16CString::from_os_str(path.as_ref())
+        .map_err(|_| StormError::InteriorNul)?
+        .into_vec()
     };
     let mut handle: HANDLE = ptr::null_mut();
-    unsafe {
-      unsafe_try_call!(SFileOpenArchive(
-        cpath.as_ptr(),
-        0,
-        flags.bits(),
-        &mut handle as *mut HANDLE,
-      ));
-      Ok(Archive { handle })
-    }
+    // unsafe_try_call! already expands to an unsafe block.
+    unsafe_try_call!(SFileOpenArchive(
+      cpath.as_ptr(),
+      0,
+      flags.bits(),
+      &mut handle as *mut HANDLE,
+    ));
+    Ok(Archive { handle })
   }
 
   /// Quick check if the file exists within MPQ archive, without opening it
@@ -86,6 +87,9 @@ impl std::ops::Drop for Archive {
 /// Opened file
 #[derive(Debug)]
 pub struct File<'a> {
+  // Never read directly: it ties the file's lifetime to its archive so
+  // the archive cannot be closed while a file is still open.
+  #[allow(dead_code)]
   archive: &'a Archive,
   file_handle: HANDLE,
   size: Option<u64>,
@@ -95,7 +99,7 @@ pub struct File<'a> {
 impl<'a> File<'a> {
   /// Retrieves a size of the file within archive
   pub fn get_size(&mut self) -> Result<u64> {
-    if let Some(size) = self.size.clone() {
+    if let Some(size) = self.size {
       Ok(size)
     } else {
       let mut high: DWORD = 0;
@@ -106,7 +110,7 @@ impl<'a> File<'a> {
       let high = (high as u64) << 32;
       let size = high | (low as u64);
       self.size = Some(size);
-      return Ok(size);
+      Ok(size)
     }
   }
 
@@ -121,13 +125,12 @@ impl<'a> File<'a> {
     }
 
     let size = self.get_size()?;
-    let mut buf = Vec::<u8>::with_capacity(size as usize);
-    buf.resize(buf.capacity(), 0);
+    let mut buf = vec![0u8; size as usize];
     let mut read: DWORD = 0;
     self.need_reset = true;
     unsafe_try_call!(SFileReadFile(
       self.file_handle,
-      std::mem::transmute(buf.as_mut_ptr()),
+      buf.as_mut_ptr() as *mut std::ffi::c_void,
       size as u32,
       &mut read as *mut DWORD,
       ptr::null_mut(),
@@ -155,8 +158,8 @@ fn test_read() {
   )
   .unwrap();
 
-  assert_eq!(archive.has_file("invalid").unwrap(), false);
-  assert_eq!(archive.has_file("war3map.j").unwrap(), true);
+  assert!(!archive.has_file("invalid").unwrap());
+  assert!(archive.has_file("war3map.j").unwrap());
   let mut f = archive.open_file("war3map.j").unwrap();
   assert_eq!(f.get_size().unwrap(), 14115);
   assert_eq!(
@@ -168,10 +171,14 @@ fn test_read() {
 #[cfg(target_os = "windows")]
 #[test]
 fn test_read_unicode() {
-  use widestring::U16CString;
   use std::os::windows::ffi::OsStringExt;
+  use widestring::U16CString;
   let mut archive = Archive::open(
-    OsString::from_wide(&U16CString::from_str("../../samples/中文.w3x").unwrap().into_vec()),
+    OsString::from_wide(
+      &U16CString::from_str("../../samples/中文.w3x")
+        .unwrap()
+        .into_vec(),
+    ),
     OpenArchiveFlags::MPQ_OPEN_NO_LISTFILE | OpenArchiveFlags::MPQ_OPEN_NO_ATTRIBUTES,
   )
   .unwrap();

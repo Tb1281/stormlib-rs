@@ -2,13 +2,15 @@
 name = "stormlib"
 version = "0.1.1"
 authors = ["Flux Xu <fluxxu@gmail.com>"]
-edition = "2018"
+description = "Safe Rust bindings for StormLib, for working with Blizzard MPQ archives"
+repository = "https://github.com/Tb1281/stormlib-rs"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 stormlib-sys = { path = "../stormlib-sys" }
-bitflags = "1.2"
+bitflags = "1"
 libc = "0.2"
 thiserror = "1"
 
