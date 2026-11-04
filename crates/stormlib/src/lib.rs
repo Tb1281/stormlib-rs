@@ -303,9 +303,14 @@ fn test_find() {
 
 #[test]
 fn test_read() {
+  // MPQ_OPEN_READ_ONLY: cargo test runs tests in parallel, and on
+  // Windows concurrent read-write opens of the same file fail with
+  // ERROR_SHARING_VIOLATION (32).
   let mut archive = Archive::open(
     "../../samples/test_tft.w3x",
-    OpenArchiveFlags::MPQ_OPEN_NO_LISTFILE | OpenArchiveFlags::MPQ_OPEN_NO_ATTRIBUTES,
+    OpenArchiveFlags::MPQ_OPEN_NO_LISTFILE
+      | OpenArchiveFlags::MPQ_OPEN_NO_ATTRIBUTES
+      | OpenArchiveFlags::MPQ_OPEN_READ_ONLY,
   )
   .unwrap();
 
@@ -330,7 +335,9 @@ fn test_read_unicode() {
         .unwrap()
         .into_vec(),
     ),
-    OpenArchiveFlags::MPQ_OPEN_NO_LISTFILE | OpenArchiveFlags::MPQ_OPEN_NO_ATTRIBUTES,
+    OpenArchiveFlags::MPQ_OPEN_NO_LISTFILE
+      | OpenArchiveFlags::MPQ_OPEN_NO_ATTRIBUTES
+      | OpenArchiveFlags::MPQ_OPEN_READ_ONLY,
   )
   .unwrap();
   let mut f = archive.open_file("war3map.j").unwrap();
@@ -345,7 +352,9 @@ fn test_read_unicode() {
 fn test_read_utf8() {
   let mut archive = Archive::open(
     "../../samples/中文.w3x",
-    OpenArchiveFlags::MPQ_OPEN_NO_LISTFILE | OpenArchiveFlags::MPQ_OPEN_NO_ATTRIBUTES,
+    OpenArchiveFlags::MPQ_OPEN_NO_LISTFILE
+      | OpenArchiveFlags::MPQ_OPEN_NO_ATTRIBUTES
+      | OpenArchiveFlags::MPQ_OPEN_READ_ONLY,
   )
   .unwrap();
   let mut f = archive.open_file("war3map.j").unwrap();
