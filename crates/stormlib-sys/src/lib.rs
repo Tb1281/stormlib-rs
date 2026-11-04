@@ -14,11 +14,24 @@ include!("./bindings_linux.rs");
 #[cfg(target_os = "macos")]
 include!("./bindings_macos.rs");
 
-extern "C" {
-  pub fn SetLastError(dwErrCode: u32);
+// Last-error retrieval, per platform. StormLib 9.40 renamed the portable
+// error functions to SErrGetLastError/SErrSetLastError (the old
+// non-Windows SetLastError/GetLastError symbols no longer exist in the
+// library); on Windows they wrap the Win32 APIs, so `stormlib` keeps
+// calling this single safe `GetLastError` name.
+#[cfg(target_os = "windows")]
+mod win32 {
+  extern "C" {
+    pub fn GetLastError() -> u32;
+  }
 }
-extern "C" {
-  pub fn GetLastError() -> u32;
+#[cfg(target_os = "windows")]
+pub fn GetLastError() -> u32 {
+  unsafe { win32::GetLastError() }
+}
+#[cfg(not(target_os = "windows"))]
+pub fn GetLastError() -> u32 {
+  unsafe { SErrGetLastError() }
 }
 
 #[test]

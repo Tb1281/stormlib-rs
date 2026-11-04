@@ -105,7 +105,7 @@ impl<'a> File<'a> {
       let mut high: DWORD = 0;
       let low = unsafe { SFileGetFileSize(self.file_handle, &mut high as *mut DWORD) };
       if low == SFILE_INVALID_SIZE {
-        return Err(From::from(ErrorCode(unsafe { GetLastError() })));
+        return Err(From::from(ErrorCode(GetLastError())));
       }
       let high = (high as u64) << 32;
       let size = high | (low as u64);
@@ -148,6 +148,147 @@ impl<'a> std::ops::Drop for File<'a> {
       SFileCloseFile(self.file_handle);
     }
   }
+}
+
+/// One entry returned by [`Archive::find_files`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FoundFile {
+  /// File name inside the archive (lossy UTF-8 if the stored name is not
+  /// valid UTF-8).
+  pub name: String,
+  /// Uncompressed size in bytes.
+  pub size: u32,
+  /// Compressed size in bytes.
+  pub compressed_size: u32,
+  /// `MPQ_FILE_*` flags.
+  pub flags: u32,
+  /// File locale.
+  pub locale: u32,
+}
+
+/// Iterator over the files in an archive matching a mask (`*` and `?`
+/// wildcards, e.g. `"*"` or `"*.j"`). Created by [`Archive::find_files`].
+#[derive(Debug)]
+pub struct FindFiles<'a> {
+  #[allow(dead_code)]
+  archive: &'a Archive,
+  handle: HANDLE,
+  data: SFILE_FIND_DATA,
+  first: bool,
+  done: bool,
+}
+
+impl<'a> FindFiles<'a> {
+  fn entry(&self) -> FoundFile {
+    let raw = &self.data.cFileName;
+    let end = raw.iter().position(|&c| c == 0).unwrap_or(raw.len());
+    FoundFile {
+      name: String::from_utf8_lossy(&raw[..end].iter().map(|&c| c as u8).collect::<Vec<u8>>())
+        .into_owned(),
+      size: self.data.dwFileSize,
+      compressed_size: self.data.dwCompSize,
+      flags: self.data.dwFileFlags,
+      locale: self.data.lcLocale,
+    }
+  }
+}
+
+impl<'a> Iterator for FindFiles<'a> {
+  type Item = Result<FoundFile>;
+
+  fn next(&mut self) -> Option<Self::Item> {
+    if self.done {
+      return None;
+    }
+    if self.first {
+      self.first = false;
+      return Some(Ok(self.entry()));
+    }
+    let ok = unsafe { SFileFindNextFile(self.handle, &mut self.data) };
+    if ok {
+      Some(Ok(self.entry()))
+    } else {
+      self.done = true;
+      let err = GetLastError();
+      if err == ERROR_NO_MORE_FILES {
+        None
+      } else {
+        Some(Err(From::from(ErrorCode(err))))
+      }
+    }
+  }
+}
+
+impl<'a> std::ops::Drop for FindFiles<'a> {
+  fn drop(&mut self) {
+    if !self.handle.is_null() {
+      unsafe {
+        SFileFindClose(self.handle);
+      }
+    }
+  }
+}
+
+impl Archive {
+  /// Lists the files in the archive whose names match `mask`
+  /// (`*` and `?` wildcards). Note this needs the archive's listfile:
+  /// opening with `MPQ_OPEN_NO_LISTFILE` leaves file names unknown, so
+  /// open without that flag to get names back.
+  pub fn find_files<'a>(&'a mut self, mask: &str) -> Result<FindFiles<'a>> {
+    let cmask = CString::new(mask)?;
+    let mut data: SFILE_FIND_DATA = unsafe { std::mem::zeroed() };
+    let handle =
+      unsafe { SFileFindFirstFile(self.handle, cmask.as_ptr(), &mut data, ptr::null_mut()) };
+    if handle.is_null() {
+      let err = GetLastError();
+      if err == ERROR_NO_MORE_FILES || err == ERROR_FILE_NOT_FOUND {
+        // No match: return an already-finished iterator. Use a dummy
+        // handle value; Drop calls SFileFindClose on it, which is a
+        // no-op for a null handle, so keep it null and guard in Drop.
+        return Ok(FindFiles {
+          archive: self,
+          handle: ptr::null_mut(),
+          data,
+          first: false,
+          done: true,
+        });
+      }
+      return Err(From::from(ErrorCode(err)));
+    }
+    Ok(FindFiles {
+      archive: self,
+      handle,
+      data,
+      first: true,
+      done: false,
+    })
+  }
+}
+
+#[test]
+fn test_find() {
+  // Listfile must be enabled for names to come back.
+  let mut archive = Archive::open("../../samples/test_tft.w3x", OpenArchiveFlags::empty()).unwrap();
+
+  let names: Vec<String> = archive
+    .find_files("*")
+    .unwrap()
+    .map(|r| r.unwrap().name)
+    .collect();
+  assert!(names.iter().any(|n| n == "war3map.j"));
+  assert!(names.iter().any(|n| n == "(listfile)"));
+
+  let js: Vec<FoundFile> = archive
+    .find_files("*.j")
+    .unwrap()
+    .map(|r| r.unwrap())
+    .collect();
+  assert_eq!(js.len(), 1);
+  assert_eq!(js[0].name, "war3map.j");
+  assert_eq!(js[0].size, 14115);
+
+  // No match yields an empty iterator, not an error.
+  assert_eq!(archive.find_files("*.nope").unwrap().count(), 0);
 }
 
 #[test]

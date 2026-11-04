@@ -9,6 +9,7 @@ bitflags! {
 
     const BASE_PROVIDER_FILE        = stormlib_sys::BASE_PROVIDER_FILE;
     const BASE_PROVIDER_MAP         = stormlib_sys::BASE_PROVIDER_MAP ;
+    const BASE_PROVIDER_MPQ         = stormlib_sys::BASE_PROVIDER_MPQ;
     const BASE_PROVIDER_HTTP        = stormlib_sys::BASE_PROVIDER_HTTP;
     const BASE_PROVIDER_MASK        = stormlib_sys::BASE_PROVIDER_MASK;
 
