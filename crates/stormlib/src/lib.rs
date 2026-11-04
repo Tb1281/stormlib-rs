@@ -233,7 +233,10 @@ impl Archive {
   /// Lists the files in the archive whose names match `mask`
   /// (`*` and `?` wildcards). Note this needs the archive's listfile:
   /// opening with `MPQ_OPEN_NO_LISTFILE` leaves file names unknown, so
-  /// open without that flag to get names back.
+  /// open without that flag to get names back. Prefer opening read-only
+  /// (`MPQ_OPEN_READ_ONLY`) when only listing: on Windows a read-write
+  /// open of a file another handle has open fails with
+  /// ERROR_SHARING_VIOLATION.
   pub fn find_files<'a>(&'a mut self, mask: &str) -> Result<FindFiles<'a>> {
     let cmask = CString::new(mask)?;
     let mut data: SFILE_FIND_DATA = unsafe { std::mem::zeroed() };
@@ -267,8 +270,15 @@ impl Archive {
 
 #[test]
 fn test_find() {
-  // Listfile must be enabled for names to come back.
-  let mut archive = Archive::open("../../samples/test_tft.w3x", OpenArchiveFlags::empty()).unwrap();
+  // Listfile must be enabled for names to come back, and read-only
+  // so the archive can be opened concurrently (on Windows a
+  // read-write open of a file another handle has open fails with
+  // ERROR_SHARING_VIOLATION).
+  let mut archive = Archive::open(
+    "../../samples/test_tft.w3x",
+    OpenArchiveFlags::MPQ_OPEN_READ_ONLY,
+  )
+  .unwrap();
 
   let names: Vec<String> = archive
     .find_files("*")

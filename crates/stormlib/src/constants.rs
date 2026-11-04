@@ -21,5 +21,6 @@ bitflags! {
     const MPQ_OPEN_NO_HEADER_SEARCH = stormlib_sys::MPQ_OPEN_NO_HEADER_SEARCH;
     const MPQ_OPEN_FORCE_MPQ_V1     = stormlib_sys::MPQ_OPEN_FORCE_MPQ_V1;
     const MPQ_OPEN_CHECK_SECTOR_CRC = stormlib_sys::MPQ_OPEN_CHECK_SECTOR_CRC;
+    const MPQ_OPEN_READ_ONLY        = stormlib_sys::MPQ_OPEN_READ_ONLY;
   }
 }
